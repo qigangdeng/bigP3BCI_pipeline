@@ -7,33 +7,32 @@ Host: PhysioNet
 URL: [https://physionet.org/content/bigp3bci/1.0.0/](https://physionet.org/content/bigp3bci/1.0.0/#files-panel)
 What we use: Subjects A_01 to A_19 from Session SE001 (both Train/ Test; CB and RD tasks). The code works for other sessions in the same layout.
 
-## Dataset Download 
-### Prerequiste (optional if you don't have)
-#### Download Brew (for mac) 
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-#### Download Wget 
-To use wget, you can download it from brew: 
-```
-brew install wget
-```
-#### Download Dataset 
-The code to download them: 
-```
-wget -r -N -c -np --reject="index.html*" https://physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA/
-```
-
-
 ## Environment Setup
 1. Clone the repository
 ```
 git clone https://github.com/qigangdeng/bigP3BCI_pipeline
 ```
 2. Create and activate a Python virutal environment
-
+```
+python -m venv .venv
+source .venv/bin/activate  # (Linux/Mac)
+# or: .venv\Scripts\activate  # (Windows PowerShell)
+```
 3. Install the required dependencies:
-
+```
+pip install -r requirements.txt
+```
+`requirements.txt` includes:
+```
+numpy
+pandas
+scikit-learn
+mne
+joblib
+matplotlib
+tqdm
+phe            # Paillier (python-paillier / phe)
+```
 ## Project Layout
 
 ## Reproduce the pipeline
