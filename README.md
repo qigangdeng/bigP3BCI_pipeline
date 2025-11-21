@@ -8,17 +8,17 @@ URL: [https://physionet.org/content/bigp3bci/1.0.0/](https://physionet.org/conte
 What we use: Subjects A_01 to A_19 from Session SE001 (both Train/ Test; CB and RD tasks). The code works for other sessions in the same layout.
 
 ## Environment Setup
-1. Clone the repository
+### 1. Clone the repository
 ```
 git clone https://github.com/qigangdeng/bigP3BCI_pipeline
 ```
-2. Create and activate a Python virutal environment
+### 2. Create and activate a Python virutal environment
 ```
 python -m venv .venv
 source .venv/bin/activate  # (Linux/Mac)
 # or: .venv\Scripts\activate  # (Windows PowerShell)
 ```
-3. Install the required dependencies:
+### 3. Install the required dependencies:
 ```
 pip install -r requirements.txt
 ```
