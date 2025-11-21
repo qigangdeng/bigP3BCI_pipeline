@@ -8,13 +8,16 @@ URL: https://physionet.org/content/bigp3bci/1.0.0/
 What we use: Subjects A_01 to A_19 from Session SE001 (both Train/ Test; CB and RD tasks). The code works for other sessions in the same layout.
 
 ## Dataset Download 
+### Prerequiste (optional if you don't have)
+#### Download Brew (for mac) 
+`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+#### Download Wget 
+To use wget, you can download it from brew: 
+`brew install wget`
+#### Download Dataset 
 The code to download them: 
-
 `wget -r -N -c -np --reject="index.html*" https://physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA/`
 
-To use wget, you can download it from brew: 
-
-`brew install wget`
 
 ## Environment Setup
 1. Clone the repository
