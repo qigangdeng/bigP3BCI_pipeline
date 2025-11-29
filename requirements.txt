@@ -1,0 +1,11 @@
+numpy
+pandas
+scikit-learn
+mne
+joblib
+matplotlib
+tqdm
+phe            # Paillier (python-paillier / phe)
+
+moabb
+filelock   
