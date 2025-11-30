@@ -11,7 +11,6 @@ class BCIDataLoader:
     """
     def __init__(
         self, 
-        file_path: str, 
         resample_rate: float = 256.0
         ):
         self.resample_rate = resample_rate
