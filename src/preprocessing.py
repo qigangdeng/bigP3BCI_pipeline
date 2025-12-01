@@ -16,6 +16,8 @@ def apply_filters(
     # Method='fir' or 'iir' is based on preference, 'fir' is often safer for BCI
     raw.filter(l_freq=bp_low, h_freq=bp_high, method='fir', phase='zero-double', picks='eeg')
     
+    # 4. Map montage to standard 1020
+    raw.set_montage("standard_1020", match_case=False, on_missing="ignore")
     return raw # Return the filtered Raw object
 
 def create_epochs(
@@ -42,5 +44,5 @@ def create_epochs(
         preload=True,      # Preload to RAM for faster access
         reject_by_annotation=False # Assuming we handled artifacts elsewhere
     )
-    
+    epochs.set_eeg_reference(ref_method="average", projection=True)
     return epochs # Return the clean, segmented Epochs object

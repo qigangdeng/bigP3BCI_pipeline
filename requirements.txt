@@ -6,6 +6,6 @@ joblib
 matplotlib
 tqdm
 phe            # Paillier (python-paillier / phe)
-
+pytest 
 moabb
 filelock   
