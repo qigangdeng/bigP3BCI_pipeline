@@ -44,5 +44,5 @@ def create_epochs(
         preload=True,      # Preload to RAM for faster access
         reject_by_annotation=False # Assuming we handled artifacts elsewhere
     )
-    epochs.set_eeg_reference(ref_method="average", projection=True)
+    epochs.set_eeg_reference(ref_channels="average", projection=True)
     return epochs # Return the clean, segmented Epochs object

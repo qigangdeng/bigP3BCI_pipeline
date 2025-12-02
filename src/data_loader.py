@@ -17,7 +17,7 @@ class BCIDataLoader:
 
     def _resample_standardise(self, raw:mne.io.Raw) -> mne.io.Raw:
         if abs(raw.info["sfreq"]-self.resample_rate) > 1e-6:
-            return raw.resample(self.resample_rate)
+            return raw.copy().resample(self.resample_rate)
         return raw
 
     def _extract_events(self, raw: mne.io.Raw) -> np.ndarray:
@@ -34,7 +34,6 @@ class BCIDataLoader:
                 "Missing BCI2000 state channels: 'StimulusBegin', 'StimulusType'."
             )
 
-        # Get the data for the two state channels (Efficiently using .get_data())
         stimulus_begin = raw.copy().pick(["StimulusBegin"]).get_data().ravel()
         stimulus_type = raw.copy().pick(["StimulusType"]).get_data().ravel()
         

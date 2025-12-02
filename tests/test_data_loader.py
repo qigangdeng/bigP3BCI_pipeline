@@ -1,100 +1,231 @@
 import pytest
 import numpy as np 
 import mne 
-import sys
 import os
-
+import sys
 from unittest.mock import Mock, patch
 from typing import List, Tuple
+from unittest.mock import Mock, patch
 
-# Get the absolute path to the directory two levels up (the project root)
-# The test file is in 'project_root/tests/', so we go up twice.
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, '..'))
-
 # Insert the project root into the system path so Python can find 'src'
 sys.path.insert(0, project_root)
-from src import run_session
-from src import data_loader 
+from src.data_loader import BCIDataLoader # Assuming your class is in src/data_loader.py
 
 
-BASE_CHS = ["F3", "Fz"]
-
-
-# --- MOCK FIXTURE ---
-
-# Helper function to create a realistic mock raw/events output
-def create_mock_raw_events(n_samples: int, local_event_index: int) -> Tuple[mne.io.Raw, np.ndarray]:
-    """Creates a synthetic raw object and a single event marker."""
-    
-    # 1. Create a minimal info structure (e.g., 2 EEG channels at 256 Hz)
-    info = mne.create_info(ch_names=BASE_CHS, sfreq=256.0, ch_types='eeg')
-    
-    # 2. Create data (2 channels x N_samples)
-    data = np.random.randn(2, n_samples)
-    raw = mne.io.RawArray(data, info, verbose=False)
-    
-    # 3. Create the MNE event array ([sample_index, previous_value, event_ID])
-    events = np.array([[local_event_index, 0, 1]], dtype=int)
-    
-    return raw, events
+# --- FIXTURES FOR MOCK RAW OBJECTS ---
 
 @pytest.fixture
-def mock_loader_output() -> List[Tuple[mne.io.Raw, np.ndarray]]:
-    """Fixture returning the data sequence for the mocked loader."""
-    
-    # File 1: Length 1000, Event at 500
-    raw1, events1 = create_mock_raw_events(n_samples=1000, local_event_index=500)
-    
-    # File 2: Length 1500, Event at 300
-    raw2, events2 = create_mock_raw_events(n_samples=1500, local_event_index=300)
-
-    return [
-        (raw1, events1),
-        (raw2, events2)
-    ]
-
-# --- UNIT TEST ---
-
-# We use @patch to replace the real BCIDataLoader with a Mock object
-@patch('src.run_session.BCIDataLoader')
-def test_event_time_alignment(MockBCIDataLoader, mock_loader_output):
-    """
-    Tests if the load_data_from_session function correctly shifts event indices 
-    after concatenation.
-    """
-    
-    # Configure the Mock Loader to return our fixture data sequentially
-    # The Mock needs to return an object (the loader instance) whose method 
-    # returns the data.
-    mock_instance = MockBCIDataLoader.return_value
-    
-    # The mock must simulate the behavior of calling the method for each file
-    # The side_effect makes it return an item from the list on each call
-    mock_instance.load_raw_and_events.side_effect = mock_loader_output
-
-    # --- EXECUTION ---
-    # We pass None for file_list, but we don't need real files since the loader is mocked
-    combined_raw, combined_events = run_session.load_data_from_session(
-        session_dir="/fake/dir", 
-        phase="Train", 
-        file_list=["fake_file1.edf", "fake_file2.edf"] # Inject two file paths
+def mock_raw_512hz():
+    """Returns a mock Raw object with a high sampling rate (512 Hz)."""
+    sfreq_high = 512.0
+    info = mne.create_info(
+        ch_names=['EEG 001', 'EEG 002'], 
+        sfreq=sfreq_high, 
+        ch_types='eeg'
     )
+    data = np.random.randn(2, 512 * 5) # 5 seconds of data
+    return mne.io.RawArray(data, info, verbose=False)
 
-    # --- ASSERTIONS ---
+@pytest.fixture
+def mock_raw_256hz():
+    """Returns a mock Raw object with the target sampling rate (256 Hz)."""
+    sfreq_target = 256.0
+    info = mne.create_info(
+        ch_names=['EEG 001', 'EEG 002'], 
+        sfreq=sfreq_target, 
+        ch_types='eeg'
+    )
+    data = np.random.randn(2, 256 * 5) # 5 seconds of data
+    return mne.io.RawArray(data, info, verbose=False)
+
+@pytest.fixture 
+def mock_raw_events():
+    """
+    Returns a mock Raw object with EEG channels,
+    as well as StimulusBegin and StimulusType state channels
+    suitable for event extraction tests.
+    """
+    sfreq = 256.0
+    n_samples = int(sfreq * 2)  # 2 seconds of data
+
+    # Define all channels (2 EEG, 2 state)
+    ch_names = ['EEG 001', 'EEG 002', 'StimulusBegin', 'StimulusType']
+    ch_types = ['eeg', 'eeg', 'stim', 'stim']
+    info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types=ch_types)
+
+    eeg_data = np.random.randn(2, n_samples)
+
+    # StimulusBegin transitions from 0 to 1 to mark event onset, else 0
+    stimulus_begin = np.zeros(n_samples)
+    stimulus_type = np.zeros(n_samples)
+
+    # Inject an "event" at sample 100
+    onset_idx = 100
+    stimulus_begin[onset_idx] = 1.0  # A rising edge—indicating new event
+
+    # Mark StimulusType as active (1) at that event, rest 0
+    stimulus_type[onset_idx] = 1.0
+
+    # Stack all data
+    all_data = np.vstack([eeg_data, stimulus_begin[np.newaxis, :], stimulus_type[np.newaxis, :]])
+
+    raw = mne.io.RawArray(all_data, info, verbose=False)
+    return raw
+
+@pytest.fixture
+def mock_raw_with_events():
+    """Fixture simulating BCI2000 state channels at 10Hz for easy index checking."""
+    sfreq = 10.0
+    info = mne.create_info(
+        ch_names=['EEG', 'StimulusBegin', 'StimulusType'],
+        sfreq=sfreq,
+        ch_types=['eeg', 'stim', 'stim']
+    )
     
-    # 1. Check Total Length (Data Integrity)
-    # Total length should be 1000 + 1500 = 2500 samples
-    assert combined_raw.n_times == 2500, "Combined raw length is incorrect"
+    # Create data for 10 samples (1 second)
+    # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 
+    
+    # Target flash at index 2, Non-Target flash at index 6
+    stimulus_begin = np.array([0, 0, 1, 1, 0, 0, 1, 1, 0, 0])
+    stimulus_type  = np.array([0, 0, 1, 1, 0, 0, 0, 0, 0, 0]) 
+    
+    data = np.vstack([
+        np.random.randn(1, 10), # EEG channel (ignored by _extract_events)
+        stimulus_begin, 
+        stimulus_type
+    ])
+    
+    raw = mne.io.RawArray(data, info, verbose=False)
+    # We set resample_rate to 10.0 Hz to ensure no resampling occurs during testing
+    loader = BCIDataLoader(resample_rate=10.0) 
+    return raw, loader
 
-    # 2. Check Event Alignment (The CRITICAL Test)
-    # The first event (from File 1) should be at its local index (500)
-    assert combined_events[0, 0] == 500, "First event was incorrectly offset"
+@pytest.fixture
+def mock_none_stimulusbegin():
+    sfreq = 10.0
+    info = mne.create_info(
+        ch_names=['EEG', 'StimulusBegin', 'StimulusType'],
+        sfreq=sfreq,
+        ch_types=['eeg', 'stim', 'stim']
+    )
+    
+    # Create data for 10 samples (1 second)
+    # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 
+    
+    # Target flash at index 2, Non-Target flash at index 6
+    stimulus_begin = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    stimulus_type  = np.array([0, 0, 1, 1, 0, 0, 0, 0, 0, 0]) 
+    
+    data = np.vstack([
+        np.random.randn(1, 10), # EEG channel (ignored by _extract_events)
+        stimulus_begin, 
+        stimulus_type
+    ])
+    
+    raw = mne.io.RawArray(data, info, verbose=False)
+    # We set resample_rate to 10.0 Hz to ensure no resampling occurs during testing
+    loader = BCIDataLoader(resample_rate=10.0) 
+    return raw
 
-    # The second event (from File 2) should be shifted by the length of File 1 (1000 samples)
-    # Local index was 300. Global index should be 1000 + 300 = 1300
-    expected_second_index = 1000 + 300
-    assert combined_events[1, 0] == expected_second_index, "Second event was not correctly shifted"
+# --- UNIT TESTS ---
 
-    # 3. Check Final Shape
-    assert combined_events.shape == (2, 3), "Combined events should have 2 rows (2 files/events)"
+def test_resample_standardise_resample_needed(mock_raw_512hz):
+    """
+    Tests the condition where raw.sfreq != target_sfreq (512Hz -> 256Hz).
+    Verifies that the new sampling frequency is correct.
+    """
+    # 1. Arrange
+    target_sfreq = 256.0
+    loader = BCIDataLoader(resample_rate=target_sfreq)
+    
+    # Check initial state
+    assert mock_raw_512hz.info['sfreq'] == 512.0
+    assert mock_raw_512hz.n_times == 512 * 5
+
+    # 2. Act
+    resampled_raw = loader._resample_standardise(mock_raw_512hz)
+
+    # 3. Assert
+    # Check that the sampling frequency has been correctly updated
+    assert resampled_raw.info['sfreq'] == pytest.approx(target_sfreq)
+    
+    # Check that the data length has changed (downsampling reduces n_times)
+    # Original length was 512 * 5 = 2560 samples. New length should be 256 * 5 = 1280 samples.
+    assert resampled_raw.n_times < mock_raw_512hz.n_times
+
+
+def test_resample_standardise_no_resample(mock_raw_256hz):
+    """
+    Tests the condition where raw.sfreq is already close to target_sfreq (256Hz -> 256Hz).
+    Verifies that the sampling frequency and data length remain unchanged.
+    """
+    # 1. Arrange
+    target_sfreq = 256.0
+    loader = BCIDataLoader(resample_rate=target_sfreq)
+    
+    # Store original data length for comparison
+    original_n_times = mock_raw_256hz.n_times
+
+    # 2. Act
+    unchanged_raw = loader._resample_standardise(mock_raw_256hz)
+
+    # 3. Assert
+    # Check that the sampling frequency is still the target frequency
+    assert unchanged_raw.info['sfreq'] == pytest.approx(target_sfreq)
+    
+    # Check that the data length is unchanged (no resampling occurred)
+    assert unchanged_raw.n_times == original_n_times
+
+    # Check that the returned object is the same underlying data structure (if possible)
+    # Using np.array_equal is safer than checking object identity here due to MNE internals
+    assert np.array_equal(unchanged_raw.get_data(), mock_raw_256hz.get_data())
+
+
+def test_extract_events(mock_raw_events):
+    loader = BCIDataLoader()
+    events = loader._extract_events(mock_raw_events)
+    assert events.shape == (1, 3)
+    assert events[0, 0] == 100
+    assert events[0, 1] == 0
+    assert events[0, 2] == 1
+
+def test_extract_events_no_events(mock_raw_256hz):
+    loader = BCIDataLoader()
+    with pytest.raises(ValueError, match="Missing BCI2000 state channels: 'StimulusBegin', 'StimulusType'."):
+        loader._extract_events(mock_raw_256hz)
+
+def test_extract_events_standard_and_alignment(mock_raw_with_events):
+    """
+    Checks if the onsets (column 0) are correct and if labels (column 2) 
+    align correctly with StimulusType at those onsets.
+    """
+    raw, loader = mock_raw_with_events
+    
+    # 1. Act
+    events = loader._extract_events(raw)
+    
+    # 2. Assert
+    
+    # Expected onsets (0-based sample indices from the table above)
+    expected_onsets = np.array([2, 6])
+    
+    # Expected MNE labels (1=Target, 0=Non-Target)
+    expected_labels = np.array([1, 0])
+    
+    # --- CHECK 1: The Critical Onset Detection (Column 0) ---
+    # Assert that the first column of the events array matches the expected onsets
+    assert np.array_equal(events[:, 0], expected_onsets), "Onset indices are incorrect"
+
+    # --- CHECK 2: The Critical Label Alignment (Column 2) ---
+    # Assert that the third column (the event ID/label) matches the expected labels
+    assert np.array_equal(events[:, 2], expected_labels), "Labels are incorrectly aligned or mapped"
+    
+    # Check overall shape: (2 events, 3 columns)
+    assert events.shape == (2, 3)
+
+def test_extract_events_none_stimulusbegin(mock_none_stimulusbegin):
+    loader = BCIDataLoader()
+    events = loader._extract_events(mock_none_stimulusbegin)
+    assert events.size == 0
