@@ -9,3 +9,4 @@ phe            # Paillier (python-paillier / phe)
 pytest 
 moabb
 filelock   
+pyyaml

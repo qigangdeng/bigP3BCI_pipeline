@@ -1,8 +1,24 @@
 import mne 
 import numpy as np 
+import os
+import yaml
 from pathlib import Path
 from typing import Tuple, Dict, List, Optional 
 from .utils import edf_list 
+
+# Resolve the config path relative to this file, not the working directory
+_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+with open(_CONFIG_PATH, "r") as f:
+    config = yaml.safe_load(f)
+
+pre_config = config['preprocessing']
+sfreq = pre_config['sfreq']
+notch_freq = pre_config['notch_freq']
+bp_low = pre_config['bp_low']
+bp_high = pre_config['bp_high']
+tmin = pre_config['tmin']
+tmax = pre_config['tmax'] 
+baseline = tuple(pre_config['baseline'])
 
 class BCIDataLoader: 
     """
@@ -13,7 +29,7 @@ class BCIDataLoader:
     """
     def __init__(
         self, 
-        resample_rate: float = 256.0
+        resample_rate: float = sfreq
         ):
         self.resample_rate = resample_rate
 
@@ -72,10 +88,10 @@ class BCIDataLoader:
 
     def _apply_filters(
         self,
-        raw: mne.io.Raw, 
-        notch_freq: float = 50.0, 
-        bp_low: float = 0.1, 
-        bp_high: float = 15.0
+        raw: mne.io.Raw,
+        notch_freq: float = notch_freq,
+        bp_low: float = bp_low,
+        bp_high: float = bp_high,
         ) -> mne.io.Raw:
         # 1. Notch Filter: Remove power line noise
         # Use a narrow IIR filter for speed and minimal phase distortion
@@ -93,9 +109,9 @@ class BCIDataLoader:
         self,
         raw: mne.io.Raw, 
         events: np.ndarray, 
-        tmin: float = -0.2, 
-        tmax: float = 0.8, 
-        baseline: Tuple[float, float] = (-0.2, 0.0)
+        tmin: float = tmin, 
+        tmax: float = tmax,
+        baseline: Tuple[float, float] = baseline
         ) -> mne.Epochs:
         """
         Creates MNE Epochs from the raw data and events, applying baseline correction.

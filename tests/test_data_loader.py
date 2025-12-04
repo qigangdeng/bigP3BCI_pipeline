@@ -13,6 +13,9 @@ project_root = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.insert(0, project_root)
 from src.data_loader import BCIDataLoader # Assuming your class is in src/data_loader.py
 
+# --- REAL edf file to check if the dataloader can give correct 
+# sfreq and time windows 
+raw_data_dir = r"/Users/qigangdeng/Downloads/BIGP3BCI/physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA/A_01/SE001/Test/RC/A_01_SE001_RC_Test07.edf"
 
 # --- FIXTURES FOR MOCK RAW OBJECTS ---
 
@@ -229,3 +232,36 @@ def test_extract_events_none_stimulusbegin(mock_none_stimulusbegin):
     loader = BCIDataLoader()
     events = loader._extract_events(mock_none_stimulusbegin)
     assert events.size == 0
+
+def test_epoch_length_and_sfreq_on_real_file():
+    loader = BCIDataLoader(resample_rate=256.0)
+
+    # Pick a single known EDF path to keep this test light
+    edf_path = raw_data_dir
+
+    raw, events = loader.load_raw_and_events(edf_path)
+    assert raw.info["sfreq"] == pytest.approx(256.0)
+
+    tmin, tmax = -0.2, 0.8
+    epochs = loader.create_epochs(raw, events, tmin=tmin, tmax=tmax, baseline=(tmin, 0.0))
+
+    sfreq = epochs.info["sfreq"]
+    n_times = epochs.get_data().shape[-1]
+    times = epochs.times  # length n_times
+
+    # 1) sfreq should be ~256 Hz
+    assert sfreq == pytest.approx(256.0, rel=1e-4)
+
+    # 2) Time axis should start/end where we expect (within one sample)
+    assert times[0] == pytest.approx(tmin, abs=1.0 / sfreq)
+    assert times[-1] == pytest.approx(tmax, abs=1.0 / sfreq)
+
+    # 3) Duration should be close to (tmax - tmin)
+    duration = times[-1] - times[0]
+    assert duration == pytest.approx(tmax - tmin, rel=1e-3, abs=1e-3)
+
+    # (Optional) sanity check on n_times: allow ±1 sample due to floating-point / EDF sfreq
+    theoretical = (tmax - tmin) * sfreq
+    assert abs(n_times - theoretical) <= 1, (
+        f"Epoch length {n_times} too far from theoretical {theoretical}"
+    )

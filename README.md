@@ -1,6 +1,9 @@
 # bigP3BCI_pipeline
 This is a public pipeline that based on dataset PhysioNet bigP3BCI EEG, do things from data loading to data visual.
 
+# Research Question
+A grid comparison from classical logistic regression to Transformer on performance metrics in binary classification of target vs non-target epochs in a visual P300 BCI task.
+
 ## Description 
 Name: BigP3BCI – An Open, Diverse, and Machine‑Learning‑Ready P300‑based BCI Dataset
 Host: PhysioNet

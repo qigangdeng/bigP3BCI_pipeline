@@ -1,0 +1,18 @@
+data:
+  raw_root: "/Users/qigangdeng/Downloads/BIGP3BCI/physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA"
+  preprocessed_root: "./preprocessed_data"
+  feature_root: "./features"
+  model_result: "./model"
+
+preprocessing:
+  sfreq: 256.0
+  tmin: -0.2
+  tmax: 0.8
+  notch_freq: 50.0
+  bp_low: 0.1
+  bp_high: 15.0
+  baseline: [-0.2, 0.0]
+
+tests:
+  # or e.g. "/abs/path/to/A_02/...edf"
+  example_edf: /Users/qigangdeng/Downloads/BIGP3BCI/physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA/A_01/SE001/Test/RC/A_01_SE001_RC_Test07.edf  

@@ -1,17 +1,24 @@
 # This script will get the epochs from the raw data
-import numpy as np 
-import mne 
+import numpy as np
+import mne
+import yaml
 from pathlib import Path
-from src import utils
-from src.data_loader import BCIDataLoader
 
-# Define input and output dirs 
-# Insert the dir of your dataset folder 
-input_dir = Path(
-    r"/Users/qigangdeng/Downloads/physionet.org/files/bigp3bci/1.0.0/bigP3BCI-data/StudyA"
-)
-# Create the output_dir if not existed
-output_dir = Path("./preprocessed_data")
+from src import utils  # type: ignore  # noqa: E402
+from src.data_loader import BCIDataLoader  # type: ignore  # noqa: E402
+
+# Resolve the config path relative to this file, not the working directory
+_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+with open(_CONFIG_PATH, "r") as f:
+    config = yaml.safe_load(f)
+
+
+# Define input and output dirs from config
+input_dir = Path(config["data"]["raw_root"])
+
+# Use configured preprocessed_root; fall back to default if missing
+preprocessed_root = config["data"].get("preprocessed_root", "./preprocessed_data")
+output_dir = Path(preprocessed_root)
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # Initiase data loader with 256 frequency sampling rate
