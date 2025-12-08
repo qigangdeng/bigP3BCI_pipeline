@@ -1,25 +1,15 @@
 # This script will get the epochs from the raw data
 import numpy as np
-import mne
-import yaml
 from pathlib import Path
 
 from src import utils  # type: ignore  # noqa: E402
 from src.data_loader import BCIDataLoader  # type: ignore  # noqa: E402
 
-# Resolve the config path relative to this file, not the working directory
-_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
-with open(_CONFIG_PATH, "r") as f:
-    config = yaml.safe_load(f)
-
 
 # Define input and output dirs from config
-input_dir = Path(config["data"]["raw_root"])
+input_dir = Path(r"D:\2025_26_internship\bigP3BCI_pipeline\src\data\StudyA")
+output_dir = Path(r"D:\2025_26_internship\bigP3BCI_pipeline\src\data\preprocessed_data")
 
-# Use configured preprocessed_root; fall back to default if missing
-preprocessed_root = config["data"].get("preprocessed_root", "./preprocessed_data")
-output_dir = Path(preprocessed_root)
-output_dir.mkdir(parents=True, exist_ok=True)
 
 # Initiase data loader with 256 frequency sampling rate
 data_loader = BCIDataLoader(resample_rate=256.0)
